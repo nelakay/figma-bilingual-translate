@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; color: #333; background: #fff; }
+
+  .header { padding: 14px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; }
+  .header h1 { font-size: 15px; font-weight: 700; margin-bottom: 1px; }
+  .header p { font-size: 11px; opacity: 0.85; }
+
+  .section { padding: 12px 16px; border-bottom: 1px solid #e8e8e8; }
+  .section-label { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+
+  .selection-info { font-size: 13px; color: #555; }
+  .selection-info.empty { color: #aaa; font-style: italic; }
+  .text-count { font-weight: 600; color: #667eea; }
+
+  .preview-list { max-height: 120px; overflow-y: auto; margin-top: 6px; }
+  .preview-item { padding: 4px 8px; background: #f5f5f5; border-radius: 4px; margin-bottom: 4px; font-size: 11px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .preview-name { font-weight: 600; color: #444; margin-right: 4px; }
+
+  select { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; font-family: inherit; background: #fff; cursor: pointer; outline: none; }
+  select:focus { border-color: #667eea; }
+
+  .translate-btn { width: 100%; margin-top: 10px; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .translate-btn:hover { opacity: 0.9; }
+  .translate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .restore-btn { width: 100%; margin-top: 6px; padding: 8px; background: #fff; color: #667eea; border: 1px solid #667eea; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .restore-btn:hover { background: #f0f0ff; }
+  .restore-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .detected { margin-top: 6px; font-size: 11px; color: #888; }
+  .detected span { font-weight: 600; color: #555; }
+
+  .loading-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.85); z-index: 100; align-items: center; justify-content: center; flex-direction: column; gap: 8px; }
+  .loading-overlay.visible { display: flex; }
+  .loading-text { font-size: 13px; color: #667eea; font-weight: 600; }
+  .loading-sub { font-size: 11px; color: #999; }
+</style>
+</head>
+<body>
+<div class="loading-overlay" id="loading">
+  <div class="loading-text" id="loading-text">Translating...</div>
+  <div class="loading-sub" id="loading-sub"></div>
+</div>
+
+<div class="header">
+  <h1>Bilingual Translate</h1>
+  <p>Select text layers and translate in-place</p>
+</div>
+
+<div class="section">
+  <div class="section-label">Selection</div>
+  <div class="selection-info empty" id="sel-info">Select text layers on the canvas</div>
+  <div class="preview-list" id="preview-list"></div>
+  <div class="detected" id="detected" style="display:none">Detected: <span id="detected-lang"></span></div>
+</div>
+
+<div class="section">
+  <div class="section-label">Translate to</div>
+  <select id="target-lang">
+    <option value="en">English</option>
+    <option value="zh">Chinese (Simplified)</option>
+  </select>
+  <button class="translate-btn" id="translate-btn" disabled>Translate</button>
+  <button class="restore-btn" id="restore-btn" disabled>Restore originals</button>
+</div>
+
+<script>
+  var texts = [];
+  var selInfo = document.getElementById('sel-info');
+  var previewList = document.getElementById('preview-list');
+  var detected = document.getElementById('detected');
+  var detectedLang = document.getElementById('detected-lang');
+  var targetLang = document.getElementById('target-lang');
+  var translateBtn = document.getElementById('translate-btn');
+  var restoreBtn = document.getElementById('restore-btn');
+  var loading = document.getElementById('loading');
+  var loadingText = document.getElementById('loading-text');
+  var loadingSub = document.getElementById('loading-sub');
+
+  function hasChinese(text) {
+    return /[\u4e00-\u9fff\u3400-\u4dbf]/.test(text);
+  }
+
+  function detectLanguage(allText) {
+    var chineseChars = (allText.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g) || []).length;
+    var total = allText.replace(/\s/g, '').length;
+    if (total === 0) return null;
+    if (chineseChars / total > 0.3) return 'zh';
+    return 'en';
+  }
+
+  function escapeHtml(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+  // ─── Translation via Lingva (Google Translate proxy) ─────
+  var LINGVA_HOST = 'https://lingva.ml';
+
+  function translateText(text, src, tgt) {
+    var langMap = { en: 'en', zh: 'zh' };
+    var srcLang = langMap[src] || 'auto';
+    var tgtLang = langMap[tgt] || 'en';
+    var url = LINGVA_HOST + '/api/v1/' + srcLang + '/' + tgtLang + '/' + encodeURIComponent(text.trim());
+    return new Promise(function(resolve) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.timeout = 12000;
+      xhr.onload = function() {
+        try {
+          var d = JSON.parse(xhr.responseText);
+          if (d.translation) {
+            resolve(d.translation);
+          } else {
+            resolve(text);
+          }
+        } catch(e) { resolve(text); }
+      };
+      xhr.onerror = function() { resolve(text); };
+      xhr.ontimeout = function() { resolve(text); };
+      xhr.send();
+    });
+  }
+
+  // ─── Selection updates from plugin ────────────
+  window.onmessage = function(event) {
+    var msg = event.data.pluginMessage;
+    if (!msg) return;
+
+    if (msg.type === 'selection') {
+      texts = msg.data.texts;
+      var count = msg.data.count;
+
+      if (count === 0) {
+        selInfo.className = 'selection-info empty';
+        selInfo.textContent = 'Select text layers on the canvas';
+        previewList.innerHTML = '';
+        detected.style.display = 'none';
+        translateBtn.disabled = true;
+        restoreBtn.disabled = true;
+        return;
+      }
+
+      selInfo.className = 'selection-info';
+      selInfo.innerHTML = '<span class="text-count">' + count + '</span> text layer' + (count !== 1 ? 's' : '') + ' selected';
+      translateBtn.disabled = false;
+      restoreBtn.disabled = false;
+
+      previewList.innerHTML = '';
+      texts.forEach(function(t) {
+        var div = document.createElement('div');
+        div.className = 'preview-item';
+        div.innerHTML = '<span class="preview-name">' + escapeHtml(t.name) + ':</span> ' + escapeHtml(t.preview);
+        previewList.appendChild(div);
+      });
+
+      // Auto-detect language
+      var allText = texts.map(function(t) { return t.characters; }).join(' ');
+      var lang = detectLanguage(allText);
+      if (lang) {
+        detected.style.display = '';
+        detectedLang.textContent = lang === 'zh' ? 'Chinese' : 'English';
+        // Auto-set target to opposite
+        targetLang.value = lang === 'zh' ? 'en' : 'zh';
+      } else {
+        detected.style.display = 'none';
+      }
+    }
+  };
+
+  // ─── Translate button ─────────────────────────
+  translateBtn.onclick = async function() {
+    if (texts.length === 0) return;
+
+    var tgt = targetLang.value;
+    translateBtn.disabled = true;
+    loading.classList.add('visible');
+
+    var translations = [];
+    for (var i = 0; i < texts.length; i++) {
+      loadingSub.textContent = (i + 1) + ' of ' + texts.length;
+      var t = texts[i];
+      var src = hasChinese(t.characters) ? 'zh' : 'en';
+      // Skip if already in target language and short text
+      if (src === tgt) {
+        translations.push({ id: t.id, translated: t.characters });
+        continue;
+      }
+      var translated = await translateText(t.characters, src, tgt);
+      translations.push({ id: t.id, translated: translated });
+    }
+
+    loading.classList.remove('visible');
+    loadingSub.textContent = '';
+    translateBtn.disabled = false;
+
+    parent.postMessage({ pluginMessage: { type: 'apply-translations', data: { translations: translations } } }, '*');
+  };
+
+  // ─── Restore button ───────────────────────────
+  restoreBtn.onclick = function() {
+    parent.postMessage({ pluginMessage: { type: 'restore-originals' } }, '*');
+  };
+</script>
+</body>
+</html>

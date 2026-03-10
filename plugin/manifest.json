@@ -1,0 +1,14 @@
+{
+  "name": "Bilingual Translate",
+  "id": "bilingual-translate-plugin",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "ui": "src/ui.html",
+  "capabilities": [],
+  "permissions": [],
+  "enableProposedApi": false,
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": ["https://lingva.ml"]
+  }
+}
