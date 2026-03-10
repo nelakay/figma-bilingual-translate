@@ -1,0 +1,18 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="128" height="128" rx="24" fill="url(#grad)"/>
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="128" y2="128">
+      <stop offset="0%" stop-color="#667eea"/>
+      <stop offset="100%" stop-color="#764ba2"/>
+    </linearGradient>
+  </defs>
+  <!-- "A" for English -->
+  <text x="24" y="68" font-family="Inter, Helvetica, Arial, sans-serif" font-size="42" font-weight="700" fill="white">A</text>
+  <!-- Arrow -->
+  <path d="M54 52 L74 52" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <path d="M70 46 L76 52 L70 58" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- Chinese character -->
+  <text x="78" y="68" font-family="Inter, Helvetica, Arial, sans-serif" font-size="36" font-weight="700" fill="white" opacity="0.9">&#x6587;</text>
+  <!-- Subtitle -->
+  <text x="64" y="100" font-family="Inter, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="white" opacity="0.7" text-anchor="middle">TRANSLATE</text>
+</svg>

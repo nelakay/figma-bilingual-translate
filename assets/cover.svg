@@ -1,0 +1,42 @@
+<svg width="1920" height="960" viewBox="0 0 1920 960" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1920" height="960" fill="url(#bg)"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1920" y2="960">
+      <stop offset="0%" stop-color="#667eea"/>
+      <stop offset="100%" stop-color="#764ba2"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Left card: English -->
+  <rect x="360" y="260" width="400" height="440" rx="20" fill="white" opacity="0.15"/>
+  <rect x="360" y="260" width="400" height="440" rx="20" stroke="white" stroke-opacity="0.3" stroke-width="2" fill="none"/>
+  <text x="560" y="360" font-family="Inter, Helvetica, Arial, sans-serif" font-size="28" font-weight="700" fill="white" text-anchor="middle">English</text>
+  <text x="560" y="420" font-family="Inter, Helvetica, Arial, sans-serif" font-size="20" fill="white" opacity="0.8" text-anchor="middle">Air Quality</text>
+  <text x="560" y="460" font-family="Inter, Helvetica, Arial, sans-serif" font-size="20" fill="white" opacity="0.8" text-anchor="middle">Humidity</text>
+  <text x="560" y="500" font-family="Inter, Helvetica, Arial, sans-serif" font-size="20" fill="white" opacity="0.8" text-anchor="middle">UV Index</text>
+  <text x="560" y="540" font-family="Inter, Helvetica, Arial, sans-serif" font-size="20" fill="white" opacity="0.8" text-anchor="middle">Visibility</text>
+  <text x="560" y="580" font-family="Inter, Helvetica, Arial, sans-serif" font-size="20" fill="white" opacity="0.8" text-anchor="middle">Pressure</text>
+  <text x="560" y="640" font-family="Inter, Helvetica, Arial, sans-serif" font-size="16" fill="white" opacity="0.5" text-anchor="middle">Select &amp; Translate</text>
+
+  <!-- Arrow -->
+  <path d="M820 480 L1100 480" stroke="white" stroke-width="4" stroke-linecap="round" stroke-dasharray="12 8"/>
+  <path d="M1088 466 L1106 480 L1088 494" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- Right card: Chinese -->
+  <rect x="1160" y="260" width="400" height="440" rx="20" fill="white" opacity="0.15"/>
+  <rect x="1160" y="260" width="400" height="440" rx="20" stroke="white" stroke-opacity="0.3" stroke-width="2" fill="none"/>
+  <text x="1360" y="360" font-family="Inter, Helvetica, Arial, sans-serif" font-size="28" font-weight="700" fill="white" text-anchor="middle">&#x4E2D;&#x6587;</text>
+  <text x="1360" y="420" font-family="Inter, Helvetica, Arial, sans-serif" font-size="20" fill="white" opacity="0.8" text-anchor="middle">&#x7A7A;&#x6C14;&#x8D28;&#x91CF;</text>
+  <text x="1360" y="460" font-family="Inter, Helvetica, Arial, sans-serif" font-size="20" fill="white" opacity="0.8" text-anchor="middle">&#x6E7F;&#x5EA6;</text>
+  <text x="1360" y="500" font-family="Inter, Helvetica, Arial, sans-serif" font-size="20" fill="white" opacity="0.8" text-anchor="middle">&#x7D2B;&#x5916;&#x7EBF;&#x6307;&#x6570;</text>
+  <text x="1360" y="540" font-family="Inter, Helvetica, Arial, sans-serif" font-size="20" fill="white" opacity="0.8" text-anchor="middle">&#x80FD;&#x89C1;&#x5EA6;</text>
+  <text x="1360" y="580" font-family="Inter, Helvetica, Arial, sans-serif" font-size="20" fill="white" opacity="0.8" text-anchor="middle">&#x538B;&#x529B;</text>
+  <text x="1360" y="640" font-family="Inter, Helvetica, Arial, sans-serif" font-size="16" fill="white" opacity="0.5" text-anchor="middle">&#x5373;&#x65F6;&#x7FFB;&#x8BD1;</text>
+
+  <!-- Title -->
+  <text x="960" y="160" font-family="Inter, Helvetica, Arial, sans-serif" font-size="52" font-weight="700" fill="white" text-anchor="middle">Bilingual Translate</text>
+  <text x="960" y="210" font-family="Inter, Helvetica, Arial, sans-serif" font-size="22" fill="white" opacity="0.7" text-anchor="middle">Translate text layers in-place between English and Chinese</text>
+
+  <!-- Footer -->
+  <text x="960" y="880" font-family="Inter, Helvetica, Arial, sans-serif" font-size="16" fill="white" opacity="0.4" text-anchor="middle">Free &#x2022; No API Key &#x2022; Google Translate Quality</text>
+</svg>
