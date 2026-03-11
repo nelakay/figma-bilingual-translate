@@ -113,9 +113,10 @@
 <div class="section">
   <button class="settings-toggle" id="settings-toggle">Settings</button>
   <div class="settings-panel" id="settings-panel">
+    <div style="font-size:12px; color:#555; line-height:1.5; margin-bottom:10px; padding:8px 10px; background:#f8f8ff; border-radius:6px;">Bilingual Translate is powered by <strong>Lingva</strong> (free). For more nuanced and accurate translations, paste your <strong>OpenAI API key</strong> below.</div>
     <label style="font-size:11px; color:#555;">OpenAI API Key</label>
     <input class="settings-input" id="api-key-input" type="password" placeholder="sk-..." />
-    <div class="settings-hint">Paste once — stored locally on this device. Enables AI translation (GPT-4o mini). Without a key, Lingva (free) is used.</div>
+    <div class="settings-hint">Paste once — stored locally on this device only.</div>
     <label style="font-size:11px; color:#555; margin-top:8px; display:block;">Monthly cap per user ($)</label>
     <input class="settings-input" id="cap-input" type="number" value="2" min="0.5" max="50" step="0.5" style="width:80px;" />
     <div class="settings-hint">When reached, falls back to free Lingva translation.</div>
