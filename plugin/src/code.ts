@@ -1,7 +1,8 @@
 // Bilingual Translate Plugin
 // Select text layers → pick target language → translate in-place
+// Dual engine: GPT-4o mini (primary) + Lingva (free fallback)
 
-figma.showUI(__html__, { width: 340, height: 360 });
+figma.showUI(__html__, { width: 340, height: 480 });
 
 // ─── Collect all text nodes from a selection (recursive) ──────
 
@@ -41,11 +42,37 @@ function sendSelection() {
 figma.on('selectionchange', sendSelection);
 sendSelection();
 
+// ─── Settings persistence ─────────────────────────────────────
+
+async function loadSettings() {
+  const apiKey = (await figma.clientStorage.getAsync('apiKey')) ?? '';
+  const monthlyCap = (await figma.clientStorage.getAsync('monthlyCap')) ?? 2;
+  const monthlyUsage = (await figma.clientStorage.getAsync('monthlyUsage')) ?? 0;
+  const usageMonth = (await figma.clientStorage.getAsync('usageMonth')) ?? '';
+  figma.ui.postMessage({ type: 'settings-loaded', data: { apiKey, monthlyCap, monthlyUsage, usageMonth } });
+}
+
+async function saveSettings(data: { apiKey: string; monthlyCap: number; monthlyUsage: number; usageMonth: string }) {
+  await figma.clientStorage.setAsync('apiKey', data.apiKey);
+  await figma.clientStorage.setAsync('monthlyCap', data.monthlyCap);
+  await figma.clientStorage.setAsync('monthlyUsage', data.monthlyUsage);
+  await figma.clientStorage.setAsync('usageMonth', data.usageMonth);
+}
+
+loadSettings();
+
 // ─── Handle messages from UI ──────────────────────────────────
 
 figma.ui.onmessage = async (msg: { type: string; data?: any }) => {
+  if (msg.type === 'load-settings') {
+    await loadSettings();
+  }
+
+  if (msg.type === 'save-settings') {
+    await saveSettings(msg.data);
+  }
+
   if (msg.type === 'apply-translations') {
-    // msg.data.translations = [{ id, translated }]
     const translations: { id: string; translated: string }[] = msg.data.translations;
     let applied = 0;
 

@@ -9,6 +9,6 @@
   "enableProposedApi": false,
   "editorType": ["figma"],
   "networkAccess": {
-    "allowedDomains": ["https://lingva.ml"]
+    "allowedDomains": ["https://lingva.ml", "https://api.openai.com"]
   }
 }

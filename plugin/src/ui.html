@@ -3,7 +3,7 @@
 <head>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; color: #333; background: #fff; }
+  body { font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; color: #333; background: #fff; overflow-y: auto; }
 
   .header { padding: 14px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; }
   .header h1 { font-size: 15px; font-weight: 700; margin-bottom: 1px; }
@@ -34,6 +34,32 @@
   .detected { margin-top: 6px; font-size: 11px; color: #888; }
   .detected span { font-weight: 600; color: #555; }
 
+  .engine-badge { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 3px; font-weight: 600; margin-left: 6px; }
+  .engine-badge.ai { background: #e8f5e9; color: #2e7d32; }
+  .engine-badge.free { background: #e3f2fd; color: #1565c0; }
+
+  .usage-bar { margin-top: 8px; }
+  .usage-bar-label { font-size: 10px; color: #999; display: flex; justify-content: space-between; margin-bottom: 3px; }
+  .usage-bar-track { height: 4px; background: #eee; border-radius: 2px; overflow: hidden; }
+  .usage-bar-fill { height: 100%; background: #667eea; border-radius: 2px; transition: width 0.3s; }
+  .usage-bar-fill.warn { background: #ff9800; }
+  .usage-bar-fill.over { background: #e53e3e; }
+
+  .settings-toggle { font-size: 11px; color: #667eea; background: none; border: none; cursor: pointer; padding: 0; font-weight: 500; }
+  .settings-toggle:hover { text-decoration: underline; }
+  .settings-panel { display: none; margin-top: 8px; }
+  .settings-panel.open { display: block; }
+  .settings-input { width: 100%; padding: 7px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; font-family: inherit; margin-top: 4px; outline: none; }
+  .settings-input:focus { border-color: #667eea; }
+  .settings-hint { font-size: 10px; color: #aaa; margin-top: 4px; }
+  .settings-save { margin-top: 6px; padding: 6px 14px; background: #667eea; color: #fff; border: none; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .settings-save:hover { opacity: 0.9; }
+
+  .cap-notice { display: none; margin-top: 8px; padding: 8px 10px; background: #fff3e0; border: 1px solid #ffe0b2; border-radius: 6px; font-size: 11px; color: #e65100; line-height: 1.4; }
+  .cap-notice.visible { display: block; }
+  .cap-notice a { color: #667eea; font-weight: 600; text-decoration: none; }
+  .cap-notice a:hover { text-decoration: underline; }
+
   .loading-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.85); z-index: 100; align-items: center; justify-content: center; flex-direction: column; gap: 8px; }
   .loading-overlay.visible { display: flex; }
   .loading-text { font-size: 13px; color: #667eea; font-weight: 600; }
@@ -59,17 +85,52 @@
 </div>
 
 <div class="section">
-  <div class="section-label">Translate to</div>
+  <div class="section-label">
+    Translate to
+    <span class="engine-badge ai" id="engine-badge" style="display:none">AI</span>
+    <span class="engine-badge free" id="engine-badge-free" style="display:none">FREE</span>
+  </div>
   <select id="target-lang">
     <option value="en">English</option>
     <option value="zh">Chinese (Simplified)</option>
   </select>
   <button class="translate-btn" id="translate-btn" disabled>Translate</button>
   <button class="restore-btn" id="restore-btn" disabled>Restore originals</button>
+
+  <div class="usage-bar" id="usage-bar" style="display:none">
+    <div class="usage-bar-label">
+      <span id="usage-label">AI usage this month</span>
+      <span id="usage-amount">$0.00 / $2.00</span>
+    </div>
+    <div class="usage-bar-track"><div class="usage-bar-fill" id="usage-fill" style="width:0%"></div></div>
+  </div>
+  <div class="cap-notice" id="cap-notice">
+    AI translation limit reached for this month. Using free translation instead.<br/>
+    Need more? <a href="mailto:your-email@company.com">Get in touch</a> to increase your limit.
+  </div>
+</div>
+
+<div class="section">
+  <button class="settings-toggle" id="settings-toggle">Settings</button>
+  <div class="settings-panel" id="settings-panel">
+    <label style="font-size:11px; color:#555;">OpenAI API Key</label>
+    <input class="settings-input" id="api-key-input" type="password" placeholder="sk-..." />
+    <div class="settings-hint">Paste once — stored locally on this device. Enables AI translation (GPT-4o mini). Without a key, Lingva (free) is used.</div>
+    <label style="font-size:11px; color:#555; margin-top:8px; display:block;">Monthly cap per user ($)</label>
+    <input class="settings-input" id="cap-input" type="number" value="2" min="0.5" max="50" step="0.5" style="width:80px;" />
+    <div class="settings-hint">When reached, falls back to free Lingva translation.</div>
+    <button class="settings-save" id="settings-save">Save</button>
+  </div>
 </div>
 
 <script>
   var texts = [];
+  var apiKey = '';
+  var monthlyCap = 2.00;
+  var monthlyUsage = 0;
+  var usageMonth = '';
+
+  // ─── DOM refs ──────────────────────────────────
   var selInfo = document.getElementById('sel-info');
   var previewList = document.getElementById('preview-list');
   var detected = document.getElementById('detected');
@@ -80,7 +141,74 @@
   var loading = document.getElementById('loading');
   var loadingText = document.getElementById('loading-text');
   var loadingSub = document.getElementById('loading-sub');
+  var engineBadge = document.getElementById('engine-badge');
+  var engineBadgeFree = document.getElementById('engine-badge-free');
+  var usageBar = document.getElementById('usage-bar');
+  var usageLabel = document.getElementById('usage-label');
+  var usageAmount = document.getElementById('usage-amount');
+  var usageFill = document.getElementById('usage-fill');
+  var settingsToggle = document.getElementById('settings-toggle');
+  var settingsPanel = document.getElementById('settings-panel');
+  var apiKeyInput = document.getElementById('api-key-input');
+  var capInput = document.getElementById('cap-input');
+  var capNotice = document.getElementById('cap-notice');
+  var settingsSave = document.getElementById('settings-save');
 
+  // ─── Settings persistence (via plugin clientStorage) ───
+  function loadSettings() {
+    parent.postMessage({ pluginMessage: { type: 'load-settings' } }, '*');
+  }
+
+  function saveSettings() {
+    apiKey = apiKeyInput.value.trim();
+    monthlyCap = parseFloat(capInput.value) || 2;
+    parent.postMessage({ pluginMessage: { type: 'save-settings', data: { apiKey: apiKey, monthlyCap: monthlyCap, monthlyUsage: monthlyUsage, usageMonth: usageMonth } } }, '*');
+    updateEngineUI();
+    settingsPanel.classList.remove('open');
+  }
+
+  settingsToggle.onclick = function() { settingsPanel.classList.toggle('open'); };
+  settingsSave.onclick = saveSettings;
+
+  function currentMonth() {
+    var d = new Date();
+    return d.getFullYear() + '-' + (d.getMonth() + 1);
+  }
+
+  function resetUsageIfNewMonth() {
+    var cm = currentMonth();
+    if (usageMonth !== cm) {
+      monthlyUsage = 0;
+      usageMonth = cm;
+    }
+  }
+
+  function canUseAI() {
+    return apiKey && apiKey.startsWith('sk-') && monthlyUsage < monthlyCap;
+  }
+
+  function updateEngineUI() {
+    resetUsageIfNewMonth();
+    var ai = canUseAI();
+    engineBadge.style.display = ai ? 'inline-block' : 'none';
+    engineBadgeFree.style.display = ai ? 'none' : 'inline-block';
+
+    if (apiKey && apiKey.startsWith('sk-')) {
+      usageBar.style.display = '';
+      var pct = Math.min((monthlyUsage / monthlyCap) * 100, 100);
+      usageAmount.textContent = '$' + monthlyUsage.toFixed(2) + ' / $' + monthlyCap.toFixed(2);
+      usageFill.style.width = pct + '%';
+      usageFill.className = 'usage-bar-fill' + (pct > 90 ? ' over' : pct > 70 ? ' warn' : '');
+      // Show cap notice when limit reached
+      var capReached = monthlyUsage >= monthlyCap;
+      capNotice.classList.toggle('visible', capReached);
+    } else {
+      usageBar.style.display = 'none';
+      capNotice.classList.remove('visible');
+    }
+  }
+
+  // ─── Helpers ───────────────────────────────────
   function hasChinese(text) {
     return /[\u4e00-\u9fff\u3400-\u4dbf]/.test(text);
   }
@@ -95,10 +223,21 @@
 
   function escapeHtml(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
-  // ─── Translation via Lingva (Google Translate proxy) ─────
+  // Rough token estimate: ~4 chars per token for English, ~1.5 for Chinese
+  function estimateTokens(text) {
+    var cn = (text.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g) || []).length;
+    var other = text.length - cn;
+    return Math.ceil(cn / 1.5 + other / 4);
+  }
+
+  // GPT-4o mini pricing per token
+  var INPUT_COST = 0.15 / 1000000;   // $0.15 per 1M input tokens
+  var OUTPUT_COST = 0.60 / 1000000;  // $0.60 per 1M output tokens
+
+  // ─── Lingva (free fallback) ────────────────────
   var LINGVA_HOST = 'https://lingva.ml';
 
-  function translateText(text, src, tgt) {
+  function translateLingva(text, src, tgt) {
     var langMap = { en: 'en', zh: 'zh' };
     var srcLang = langMap[src] || 'auto';
     var tgtLang = langMap[tgt] || 'en';
@@ -110,11 +249,7 @@
       xhr.onload = function() {
         try {
           var d = JSON.parse(xhr.responseText);
-          if (d.translation) {
-            resolve(d.translation);
-          } else {
-            resolve(text);
-          }
+          if (d.translation) { resolve(d.translation); } else { resolve(text); }
         } catch(e) { resolve(text); }
       };
       xhr.onerror = function() { resolve(text); };
@@ -123,7 +258,62 @@
     });
   }
 
-  // ─── Selection updates from plugin ────────────
+  // ─── GPT-4o mini (batch translation) ──────────
+  function translateBatchAI(textItems, tgtLang) {
+    var langName = tgtLang === 'zh' ? 'Simplified Chinese' : 'English';
+    var numbered = textItems.map(function(t, i) { return (i + 1) + '. ' + JSON.stringify(t.characters); }).join('\n');
+
+    var prompt = 'Translate the following UI texts to ' + langName + '. ' +
+      'These are from a product design file — preserve brand names, technical terms, and variable names as-is. ' +
+      'Use natural, contextually appropriate translations (e.g. "hitting level 5" means "reaching level 5", not "using"). ' +
+      'Return ONLY a JSON array of translated strings in the same order, no other text.\n\n' + numbered;
+
+    var body = JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are a professional UI/UX translator. Translate accurately, preserving tone and context. Return only a JSON array of strings.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.2
+    });
+
+    var inputTokens = estimateTokens(prompt + body);
+
+    return new Promise(function(resolve, reject) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', 'https://api.openai.com/v1/chat/completions', true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.setRequestHeader('Authorization', 'Bearer ' + apiKey);
+      xhr.timeout = 30000;
+      xhr.onload = function() {
+        try {
+          var resp = JSON.parse(xhr.responseText);
+          if (resp.error) { reject(resp.error.message); return; }
+          var content = resp.choices[0].message.content.trim();
+          // Strip markdown code fences if present
+          content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+          var translations = JSON.parse(content);
+          if (!Array.isArray(translations) || translations.length !== textItems.length) {
+            reject('Invalid response format');
+            return;
+          }
+          // Track usage
+          var outputTokens = estimateTokens(content);
+          var cost = (inputTokens * INPUT_COST) + (outputTokens * OUTPUT_COST);
+          monthlyUsage += cost;
+          // Persist usage
+          parent.postMessage({ pluginMessage: { type: 'save-settings', data: { apiKey: apiKey, monthlyCap: monthlyCap, monthlyUsage: monthlyUsage, usageMonth: usageMonth } } }, '*');
+          updateEngineUI();
+          resolve(translations);
+        } catch(e) { reject('Failed to parse response'); }
+      };
+      xhr.onerror = function() { reject('Network error'); };
+      xhr.ontimeout = function() { reject('Timeout'); };
+      xhr.send(body);
+    });
+  }
+
+  // ─── Selection updates from plugin ─────────────
   window.onmessage = function(event) {
     var msg = event.data.pluginMessage;
     if (!msg) return;
@@ -155,40 +345,91 @@
         previewList.appendChild(div);
       });
 
-      // Auto-detect language
       var allText = texts.map(function(t) { return t.characters; }).join(' ');
       var lang = detectLanguage(allText);
       if (lang) {
         detected.style.display = '';
         detectedLang.textContent = lang === 'zh' ? 'Chinese' : 'English';
-        // Auto-set target to opposite
         targetLang.value = lang === 'zh' ? 'en' : 'zh';
       } else {
         detected.style.display = 'none';
       }
     }
+
+    if (msg.type === 'settings-loaded') {
+      var s = msg.data;
+      apiKey = s.apiKey || '';
+      monthlyCap = s.monthlyCap || 2;
+      monthlyUsage = s.monthlyUsage || 0;
+      usageMonth = s.usageMonth || '';
+      apiKeyInput.value = apiKey;
+      capInput.value = monthlyCap;
+      resetUsageIfNewMonth();
+      updateEngineUI();
+    }
   };
 
-  // ─── Translate button ─────────────────────────
+  // ─── Translate button ──────────────────────────
   translateBtn.onclick = async function() {
     if (texts.length === 0) return;
 
     var tgt = targetLang.value;
     translateBtn.disabled = true;
     loading.classList.add('visible');
+    resetUsageIfNewMonth();
+
+    // Filter texts that need translation
+    var toTranslate = [];
+    var skipMap = {};
+    texts.forEach(function(t, i) {
+      var src = hasChinese(t.characters) ? 'zh' : 'en';
+      if (src === tgt) { skipMap[i] = t.characters; }
+      else { toTranslate.push({ index: i, id: t.id, characters: t.characters }); }
+    });
 
     var translations = [];
-    for (var i = 0; i < texts.length; i++) {
-      loadingSub.textContent = (i + 1) + ' of ' + texts.length;
-      var t = texts[i];
-      var src = hasChinese(t.characters) ? 'zh' : 'en';
-      // Skip if already in target language and short text
-      if (src === tgt) {
-        translations.push({ id: t.id, translated: t.characters });
-        continue;
+
+    if (toTranslate.length > 0 && canUseAI()) {
+      // ── AI batch translation ──
+      loadingSub.textContent = 'AI translating ' + toTranslate.length + ' texts...';
+      try {
+        var aiResults = await translateBatchAI(toTranslate, tgt);
+        // Build full translations array
+        texts.forEach(function(t, i) {
+          if (skipMap.hasOwnProperty(i)) {
+            translations.push({ id: t.id, translated: t.characters });
+          } else {
+            var idx = toTranslate.findIndex(function(tt) { return tt.index === i; });
+            translations.push({ id: t.id, translated: aiResults[idx] });
+          }
+        });
+      } catch(e) {
+        // AI failed — fall back to Lingva
+        loadingSub.textContent = 'AI failed, using free translation...';
+        translations = [];
+        for (var i = 0; i < texts.length; i++) {
+          if (skipMap.hasOwnProperty(i)) {
+            translations.push({ id: texts[i].id, translated: texts[i].characters });
+            continue;
+          }
+          loadingSub.textContent = 'Fallback: ' + (i + 1) + ' of ' + texts.length;
+          var src = hasChinese(texts[i].characters) ? 'zh' : 'en';
+          var tr = await translateLingva(texts[i].characters, src, tgt);
+          translations.push({ id: texts[i].id, translated: tr });
+        }
       }
-      var translated = await translateText(t.characters, src, tgt);
-      translations.push({ id: t.id, translated: translated });
+    } else {
+      // ── Lingva one-by-one ──
+      for (var i = 0; i < texts.length; i++) {
+        if (skipMap.hasOwnProperty(i)) {
+          translations.push({ id: texts[i].id, translated: texts[i].characters });
+          continue;
+        }
+        loadingSub.textContent = (i + 1) + ' of ' + texts.length;
+        var src = hasChinese(texts[i].characters) ? 'zh' : 'en';
+        var tr = await translateLingva(texts[i].characters, src, tgt);
+        translations.push({ id: texts[i].id, translated: tr });
+      }
     }
 
     loading.classList.remove('visible');
@@ -202,6 +443,10 @@
   restoreBtn.onclick = function() {
     parent.postMessage({ pluginMessage: { type: 'restore-originals' } }, '*');
   };
+
+  // ─── Init ─────────────────────────────────────
+  loadSettings();
+  updateEngineUI();
 </script>
 </body>
 </html>
